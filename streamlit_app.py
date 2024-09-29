@@ -8,6 +8,10 @@ from stravaAPI import fetch_activities_and_gpx  # Updated function to fetch acti
 gpx_folder = 'API_GPX_FILES'
 csv_file_path = 'strava_activities.csv'
 
+# Ensure the GPX folder exists
+if not os.path.exists(gpx_folder):
+    os.makedirs(gpx_folder)
+
 # Streamlit app layout
 st.title("Strava Activity Analysis Dashboard")
 
