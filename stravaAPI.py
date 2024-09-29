@@ -45,22 +45,32 @@ def fetch_activities_and_gpx():
         # Step 3: Identify missing GPX files
         existing_gpx_files = set(f.replace('.gpx', '') for f in os.listdir(gpx_folder) if f.endswith('.gpx'))
 
-        # Step 4: Fetch activities from Strava
+        # Step 4: Fetch activities from Strava with pagination
         headers = {'Authorization': f'Bearer {access_token}'}
-        activities_response = requests.get(
-            url='https://www.strava.com/api/v3/athlete/activities',
-            headers=headers
-        )
+        page = 1
+        activities = []
 
-        if activities_response.status_code != 200:
-            st.write(f"Error fetching activities: {activities_response.status_code}")
-            st.write(f"Response: {activities_response.text}")
-            return
+        while True:
+            activities_response = requests.get(
+                url='https://www.strava.com/api/v3/athlete/activities',
+                headers=headers,
+                params={'page': page, 'per_page': 200}  # Adjust 'per_page' to your preference (max 200)
+            )
 
-        activities = activities_response.json()
+            if activities_response.status_code != 200:
+                st.write(f"Error fetching activities: {activities_response.status_code}")
+                st.write(f"Response: {activities_response.text}")
+                break
+
+            new_activities = activities_response.json()
+            if not new_activities:
+                # Break if there are no more activities to fetch
+                break
+
+            activities.extend(new_activities)
+            page += 1
+
         updated_gpx_files = 0
-
-        # Prepare data for the CSV
         activities_data = []
 
         # Step 5: Generate GPX files for missing activities
