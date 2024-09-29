@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from stravaDash import generate_statistics_html, generate_map_and_statistics, generate_runs_list_html
-from stravaAPI import fetch_activities_and_gpx  # Updated function to fetch activities and GPX files
+from stravaAPI import fetch_activities_and_gpx  # Function to fetch activities and generate GPX files
 
 # Set paths for data
 gpx_folder = 'API_GPX_FILES'
@@ -40,35 +40,47 @@ if os.path.exists(csv_file_path):
     st.write("## Data Preview")
     st.dataframe(df.head())
 
+    # Display the GPX files in the directory for debugging
+    st.write("## Checking for GPX files in the directory...")
+    gpx_files = os.listdir(gpx_folder)
+    if gpx_files:
+        st.write(f"Found {len(gpx_files)} GPX files:")
+        st.write(gpx_files)
+    else:
+        st.warning("No GPX files found in the directory.")
+
     # Generate and display the latest statistics
     if st.button('Show Current Statistics'):
-        # Generate all the HTML files using the current CSV data
-        generate_statistics_html(df)
-        generate_map_and_statistics(df, gpx_folder)
-        generate_runs_list_html(df, gpx_folder)
+        try:
+            # Generate all the HTML files using the current CSV data
+            generate_statistics_html(df)
+            generate_map_and_statistics(df, gpx_folder)
+            generate_runs_list_html(df, gpx_folder)
 
-        # Display Statistics
-        with open('generated_statistics.html', 'r', encoding='utf-8') as file:
-            html_content = file.read()
-            st.write("### Overall Statistics")
-            st.components.v1.html(html_content, height=300, scrolling=True)
+            # Display Statistics
+            with open('generated_statistics.html', 'r', encoding='utf-8') as file:
+                html_content = file.read()
+                st.write("### Overall Statistics")
+                st.components.v1.html(html_content, height=300, scrolling=True)
 
-        # Display Map
-        with open('activity_map.html', 'r', encoding='utf-8') as file:
-            map_content = file.read()
-            st.write("### Activity Map")
-            st.components.v1.html(map_content, height=600, scrolling=True)
+            # Display Map
+            with open('activity_map.html', 'r', encoding='utf-8') as file:
+                map_content = file.read()
+                st.write("### Activity Map")
+                st.components.v1.html(map_content, height=600, scrolling=True)
 
-        # Display City and Country Statistics
-        with open('generated_city_statistics_from_csv.html', 'r', encoding='utf-8') as file:
-            stats_content = file.read()
-            st.write("### City and Country Statistics")
-            st.components.v1.html(stats_content, height=400, scrolling=True)
+            # Display City and Country Statistics
+            with open('generated_city_statistics_from_csv.html', 'r', encoding='utf-8') as file:
+                stats_content = file.read()
+                st.write("### City and Country Statistics")
+                st.components.v1.html(stats_content, height=400, scrolling=True)
 
-        # Display Runs List
-        with open('runs_list.html', 'r', encoding='utf-8') as file:
-            runs_list_content = file.read()
-            st.write("### Runs List")
-            st.components.v1.html(runs_list_content, height=400, scrolling=True)
+            # Display Runs List
+            with open('runs_list.html', 'r', encoding='utf-8') as file:
+                runs_list_content = file.read()
+                st.write("### Runs List")
+                st.components.v1.html(runs_list_content, height=400, scrolling=True)
+        except Exception as e:
+            st.error(f"An error occurred while generating and displaying statistics: {e}")
 else:
     st.write("Upload a CSV file to get started or fetch the latest data from Strava.")
