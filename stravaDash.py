@@ -1,7 +1,7 @@
 import os
 import gpxpy
-import folium
 import pandas as pd
+import folium
 from collections import defaultdict
 from datetime import datetime
 from geopy.geocoders import Nominatim
@@ -19,38 +19,47 @@ def get_city_and_country(location):
         country = address.get('country', 'Unknown')
     return city, country
 
-# Function to update the map and statistics incrementally
-def update_map_and_statistics():
-    # Load the existing CSV data
+# Function to generate map and city/country statistics
+def generate_map_and_statistics():
+    # Load the CSV data for activity analysis
     df = pd.read_csv(csv_file_path)
     df['start_date_local'] = pd.to_datetime(df['start_date_local'])
-    
-    # Load the list of GPX files already processed
-    existing_gpx_files = set(os.listdir(gpx_folder))
-    
-    # Initialize map and statistics
-    activity_map = folium.Map(location=[55.6761, 12.5683], zoom_start=11, tiles='cartodb positron')
+
+    # Initialize geolocator for reverse geocoding
     geolocator = Nominatim(user_agent="city_locator")
+
+    # Dictionaries to store distances per city and country
     city_distances = defaultdict(lambda: {'total_distance_km': 0, 'run_count': 0})
     country_distances = defaultdict(lambda: {'total_distance_km': 0, 'run_count': 0})
-    new_tracks_data = []
 
-    # Iterate over new GPX files to update statistics and map
-    for file_name in existing_gpx_files:
+    # Create a Folium map centered on Copenhagen
+    activity_map = folium.Map(location=[55.6761, 12.5683], zoom_start=11, tiles='cartodb positron')
+
+    # Collect all tracks data for sorting
+    tracks_data = []
+
+    # Iterate over GPX files to collect data for the map
+    for file_name in os.listdir(gpx_folder):
         if file_name.endswith('.gpx'):
             activity_id = file_name.replace('.gpx', '')
+
+            # Look up the distance and start time in the CSV using the activity ID
             activity_data = df[df['id'] == int(activity_id)]
             if activity_data.empty:
                 continue
-            
+
             start_time = pd.to_datetime(activity_data['start_date_local'].values[0])
+
             file_path = os.path.join(gpx_folder, file_name)
 
+            # Parse the GPX file to get the location and polyline data
             with open(file_path, 'r') as gpx_file:
                 gpx = gpxpy.parse(gpx_file)
+
+                # Extract the track points
                 if gpx.tracks and gpx.tracks[0].segments and gpx.tracks[0].segments[0].points:
                     track_points = [(point.latitude, point.longitude) for point in gpx.tracks[0].segments[0].points]
-                    new_tracks_data.append((track_points, activity_id, start_time))
+                    tracks_data.append((track_points, activity_id, start_time))
 
                     # Extract the first track point for location
                     point = gpx.tracks[0].segments[0].points[0]
@@ -59,28 +68,35 @@ def update_map_and_statistics():
                     # Use geopy to get the city and country names
                     location = geolocator.reverse((latitude, longitude), exactly_one=True, timeout=10)
                     city, country = get_city_and_country(location)
-
+                    
+                    # Update city distances using the distance from the CSV
                     total_distance_km = activity_data['distance'].values[0] / 1000
                     if city:
                         city_distances[city]['total_distance_km'] += total_distance_km
                         city_distances[city]['run_count'] += 1
-
+                    
+                    # Update country distances
                     if country:
                         country_distances[country]['total_distance_km'] += total_distance_km
                         country_distances[country]['run_count'] += 1
 
-    # Add new tracks to the map
-    for idx, (track_points, activity_id, start_time) in enumerate(new_tracks_data):
+    # Sort tracks by start time to assign run numbers in ascending order
+    tracks_data.sort(key=lambda x: x[2])  # Sort by start time
+
+    # Create the map using sorted tracks
+    for idx, (track_points, activity_id, start_time) in enumerate(tracks_data):
+        # Look up the distance in the CSV using the activity ID
         activity_data = df[df['id'] == int(activity_id)]
         total_distance_km = activity_data['distance'].values[0] / 1000
         total_time_seconds = activity_data['moving_time'].values[0]
         avg_pace_seconds_per_km = total_time_seconds / total_distance_km if total_distance_km > 0 else 0
         avg_pace_minutes = int(avg_pace_seconds_per_km // 60)
         avg_pace_seconds = int(avg_pace_seconds_per_km % 60)
-        run_date = start_time.strftime("%Y-%m-%d")
-        
+        run_date = start_time.to_pydatetime().strftime("%Y-%m-%d")
+        run_number = idx + 1
+
         # Popup text for the polyline
-        popup_text = (f"Run ID: {activity_id}<br>"
+        popup_text = (f"Run Number: {run_number}<br>"
                       f"Date: {run_date}<br>"
                       f"Total Distance: {total_distance_km:.3f} km<br>"
                       f"Pace: {avg_pace_minutes}:{avg_pace_seconds:02d} min/km")
@@ -89,27 +105,27 @@ def update_map_and_statistics():
         points = [(point[0], point[1]) for point in track_points]
         folium.PolyLine(points, color='red', weight=2.5, opacity=1, tooltip=popup_text).add_to(activity_map)
 
-    # Save the updated map
+    # Save the map to an HTML file
     activity_map.save('activity_map.html')
 
-    # Update city and country statistics in the HTML
+    # Generate city statistics HTML content
     stats_html_content = "<div class='city-stats'>\n<h2>City Statistics</h2>\n"
     for index, (city, stats) in enumerate(sorted(city_distances.items(), key=lambda x: x[1]['total_distance_km'], reverse=True)):
         stats_html_content += f"<p>{index + 1}. <strong>{city}</strong>: {stats['total_distance_km']:.3f} km ({stats['run_count']} Runs)</p>\n"
-    
+
+    # Add spacing before the country statistics
     stats_html_content += "<br><br><h2>Country Statistics</h2>\n"
     for index, (country, stats) in enumerate(sorted(country_distances.items(), key=lambda x: x[1]['total_distance_km'], reverse=True)):
         stats_html_content += f"<p>{index + 1}. <strong>{country}</strong>: {stats['total_distance_km']:.3f} km ({stats['run_count']} Runs)</p>\n"
     stats_html_content += "</div>"
 
-    # Save the updated statistics HTML
-    with open('generated_city_statistics_from_csv.html', 'w', encoding='utf-8') as file:
+    # Save the generated city and country statistics to an HTML file
+    output_stats_html_path = 'generated_city_statistics_from_csv.html'
+    with open(output_stats_html_path, 'w', encoding='utf-8') as file:
         file.write(stats_html_content)
-    
-    print(f"Updated city and country statistics.")
 
-# Function to update the runs list incrementally
-def update_runs_list_html():
+# Function to generate the runs list in a sortable HTML table
+def generate_runs_list_html():
     df = pd.read_csv(csv_file_path)
     df['start_date_local'] = pd.to_datetime(df['start_date_local'])
 
@@ -141,14 +157,14 @@ def update_runs_list_html():
             runs_data.append((activity_id, run_date, time_str, total_distance_km, f"{avg_pace_minutes}:{avg_pace_seconds:02d} min/km", start_time))
 
     # Sort runs by date in ascending order to assign correct run numbers
-    runs_data.sort(key=lambda x: x[5])  # Sort by start_time
+    runs_data.sort(key=lambda x: x[5])
 
     # Assign run numbers
     for idx, run in enumerate(runs_data):
-        runs_data[idx] = (idx + 1,) + run[1:]  # Insert the run number at the beginning
+        runs_data[idx] = (idx + 1,) + run[1:]
 
     # Sort runs by date in descending order for the HTML table
-    runs_data.sort(key=lambda x: x[5], reverse=True)  # Sort by start_time in descending order
+    runs_data.sort(key=lambda x: x[5], reverse=True)
 
     # Generate the HTML content
     html_content = """
@@ -157,7 +173,7 @@ def update_runs_list_html():
         <style>
             body { font-family: Arial, sans-serif; color: #333; }
             table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+                        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
             th { background-color: #f4f4f4; cursor: pointer; }
             th.sort-asc::after { content: " \\2191"; }
             th.sort-desc::after { content: " \\2193"; }
@@ -165,7 +181,8 @@ def update_runs_list_html():
         </style>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                                const comparer = (idx, asc, type) => (a, b) => {
+                const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+                const comparer = (idx, asc, type) => (a, b) => {
                     let v1 = getCellValue(asc ? a : b, idx);
                     let v2 = getCellValue(asc ? b : a, idx);
                     if (type === 'date') {
@@ -227,15 +244,8 @@ def update_runs_list_html():
     """
 
     # Save the generated HTML content to a file
-    with open('runs_list.html', 'w', encoding='utf-8') as file:
+    output_html_path = 'runs_list.html'
+    with open(output_html_path, 'w', encoding='utf-8') as file:
         file.write(html_content)
-    
-    print("Updated runs list HTML.")
 
-# Function to be called by the Streamlit app to perform incremental updates
-def generate_statistics_html():
-    # Call update functions to incrementally update files
-    update_map_and_statistics()
-    update_runs_list_html()
-
-               
+    print(f"Runs list HTML file generated and saved as '{output_html_path}'.")
