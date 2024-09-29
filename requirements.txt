@@ -54,4 +54,3 @@ tzdata==2024.2
 urllib3==2.2.3
 watchdog==4.0.2
 xyzservices==2024.9.0
-polyline
