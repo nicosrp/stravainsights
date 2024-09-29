@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import os
-from stravaAPI import fetch_activities_and_gpx  # Assuming stravaAPI.py has this function
-from stravaDash import update_map_and_statistics, update_runs_list_html, generate_map_and_statistics, generate_runs_list_html
+from stravaAPI import fetch_activities_and_gpx  # Function to fetch activities and generate GPX files
+from stravaDash import generate_map_and_statistics, generate_runs_list_html  # Functions to create HTML files
 
 # Set paths for data
 gpx_folder = 'API_GPX_FILES'
@@ -17,17 +17,12 @@ def load_data(file_path):
         return None
 
 # Function to update data from Strava and regenerate files
-def update_data(incremental=True):
+def update_data():
     st.write("Updating data from Strava and creating missing GPX files...")
     fetch_activities_and_gpx()
-    if incremental:
-        st.write("Performing incremental update...")
-        update_map_and_statistics()
-        update_runs_list_html()
-    else:
-        st.write("Performing full rebuild...")
-        generate_map_and_statistics()
-        generate_runs_list_html()
+    st.success('Data fetched and GPX files updated. Regenerating statistics...')
+    generate_map_and_statistics()
+    generate_runs_list_html()
     st.success('All files have been updated!')
 
 # Streamlit app layout
@@ -59,12 +54,8 @@ if df is not None:
         st.components.v1.html(runs_list_content, height=400, scrolling=True)
 
     # Button to update the data
-    if st.button('Incremental Update'):
-        update_data(incremental=True)
-
-    # Button to force a full rebuild
-    if st.button('Full Rebuild'):
-        update_data(incremental=False)
+    if st.button('Update Data'):
+        update_data()
 
 else:
     st.write("No existing data found. Please update the data to fetch the latest activities.")
