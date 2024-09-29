@@ -1,16 +1,23 @@
-import requests
 import os
+import requests
 import gpxpy
 import polyline
 import streamlit as st
+import pandas as pd
 
-# Define your Strava API credentials (you can use Streamlit secrets here)
+# Set paths for GPX folder and CSV file
+gpx_folder = 'API_GPX_FILES'
+csv_file_path = 'strava_activities.csv'
+
+# Define your Strava API credentials
 client_id = st.secrets["STRAVA_CLIENT_ID"]
 client_secret = st.secrets["STRAVA_CLIENT_SECRET"]
 refresh_token = st.secrets["STRAVA_REFRESH_TOKEN"]
 
 def fetch_activities_and_gpx():
     try:
+        st.write("Fetching data from Strava and creating missing GPX files...")
+
         # Step 1: Get an access token using the refresh token
         token_response = requests.post(
             url='https://www.strava.com/oauth/token',
@@ -24,24 +31,21 @@ def fetch_activities_and_gpx():
 
         token_response.raise_for_status()
         token_data = token_response.json()
-
-        # Extract the access token
         access_token = token_data.get('access_token')
-        
-        # Debugging: Verify if access_token is successfully fetched
+
+        # Debug: Ensure access token is retrieved
         if not access_token:
             st.write(f"Failed to obtain access token. Response: {token_data}")
             return
 
-        # Print token data to debug
-        st.write("Token Data:", token_data)
-
-        # Step 2: Create GPX folder if it does not exist
-        gpx_folder = 'API_GPX_FILES'
+        # Step 2: Create the GPX folder if it does not exist
         if not os.path.exists(gpx_folder):
             os.makedirs(gpx_folder)
 
-        # Step 3: Use the access token to fetch activities
+        # Step 3: Identify missing GPX files
+        existing_gpx_files = set(f.replace('.gpx', '') for f in os.listdir(gpx_folder) if f.endswith('.gpx'))
+
+        # Step 4: Fetch activities from Strava
         headers = {'Authorization': f'Bearer {access_token}'}
         activities_response = requests.get(
             url='https://www.strava.com/api/v3/athlete/activities',
@@ -54,17 +58,35 @@ def fetch_activities_and_gpx():
             return
 
         activities = activities_response.json()
+        updated_gpx_files = 0
 
-        # Process each activity and generate GPX files
+        # Prepare data for the CSV
+        activities_data = []
+
+        # Step 5: Generate GPX files for missing activities
         for activity in activities:
-            activity_id = activity['id']
-            polyline_str = activity.get('map', {}).get('summary_polyline')
+            activity_id = str(activity['id'])
+            activities_data.append({
+                'id': activity_id,
+                'name': activity['name'],
+                'type': activity['type'],
+                'start_date_local': activity['start_date_local'],
+                'distance': activity['distance'],
+                'moving_time': activity['moving_time'],
+                'elapsed_time': activity['elapsed_time'],
+                'total_elevation_gain': activity['total_elevation_gain']
+            })
 
+            # Check if the GPX file for this activity already exists
+            if activity_id in existing_gpx_files:
+                continue
+
+            polyline_str = activity.get('map', {}).get('summary_polyline')
             if not polyline_str:
                 st.write(f"No polyline found for activity {activity_id}. Skipping...")
                 continue
 
-            # Decode polyline and generate GPX
+            # Decode polyline and create GPX file
             coordinates = polyline.decode(polyline_str)
             gpx = gpxpy.gpx.GPX()
             gpx_track = gpxpy.gpx.GPXTrack()
@@ -76,11 +98,22 @@ def fetch_activities_and_gpx():
                 lat, lon = coord
                 gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(lat, lon))
 
-            # Save GPX file
+            # Save the GPX file
             gpx_filename = os.path.join(gpx_folder, f'{activity_id}.gpx')
             with open(gpx_filename, 'w') as gpx_file:
                 gpx_file.write(gpx.to_xml())
                 st.write(f"Saved GPX file: {gpx_filename}")
+                updated_gpx_files += 1
+
+        # Step 6: Save activities to CSV
+        df = pd.DataFrame(activities_data)
+        df.to_csv(csv_file_path, index=False)
+        st.write(f"Updated '{csv_file_path}' with the latest activities.")
+
+        if updated_gpx_files == 0:
+            st.write("No new GPX files were created. The folder is up to date.")
+        else:
+            st.write(f"Updated GPX folder with {updated_gpx_files} new GPX files.")
 
     except requests.exceptions.HTTPError as http_err:
         st.write(f"HTTP error occurred: {http_err}")
