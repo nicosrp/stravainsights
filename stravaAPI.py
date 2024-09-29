@@ -27,7 +27,7 @@ def fetch_activities_and_gpx():
 
     # Pagination parameters
     page = 1
-    per_page = 200
+    per_page = 200  # Max number of activities per page
     all_activities = []
 
     # Fetch activities with pagination
