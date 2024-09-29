@@ -19,17 +19,17 @@ def load_data(file_path):
 # Function to update data from Strava and regenerate files
 def update_data():
     st.write("Fetching data from Strava and creating missing GPX files...")
-    fetch_activities_and_gpx()  # Fetch activities and update the GPX files
+    fetch_activities_and_gpx()
+    st.success('Data fetched and GPX files updated. Regenerating statistics...')
+    generate_map_and_statistics()
+    generate_runs_list_html()
+    st.success('All files have been updated!')
 
-    # Check if the CSV file has data
-    if os.path.exists(csv_file_path) and os.path.getsize(csv_file_path) > 0:
-        st.success('Data fetched and GPX files updated. Regenerating statistics...')
-        generate_map_and_statistics()
-        generate_runs_list_html()
-        st.success('All files have been updated!')
-    else:
-        st.error("Failed to fetch data or CSV file is empty. Please check Strava API settings.")
-
+# Automatically update data when the app starts
+if 'data_updated' not in st.session_state:
+    st.write("Updating data on app startup...")
+    update_data()
+    st.session_state['data_updated'] = True  # Set flag to avoid repeating updates during the same session
 
 # Streamlit app layout
 st.title("Strava Activity Analysis")
@@ -42,22 +42,25 @@ if df is not None:
     st.write("## Current Statistics")
 
     # Display the map
-    with open('activity_map.html', 'r', encoding='utf-8') as file:
-        map_content = file.read()
-        st.write("### Activity Map")
-        st.components.v1.html(map_content, height=600, scrolling=True)
+    if os.path.exists('activity_map.html'):
+        with open('activity_map.html', 'r', encoding='utf-8') as file:
+            map_content = file.read()
+            st.write("### Activity Map")
+            st.components.v1.html(map_content, height=600, scrolling=True)
 
     # Display city and country statistics
-    with open('generated_city_statistics_from_csv.html', 'r', encoding='utf-8') as file:
-        stats_content = file.read()
-        st.write("### City and Country Statistics")
-        st.components.v1.html(stats_content, height=400, scrolling=True)
+    if os.path.exists('generated_city_statistics_from_csv.html'):
+        with open('generated_city_statistics_from_csv.html', 'r', encoding='utf-8') as file:
+            stats_content = file.read()
+            st.write("### City and Country Statistics")
+            st.components.v1.html(stats_content, height=400, scrolling=True)
 
     # Display the runs list
-    with open('runs_list.html', 'r', encoding='utf-8') as file:
-        runs_list_content = file.read()
-        st.write("### Runs List")
-        st.components.v1.html(runs_list_content, height=400, scrolling=True)
+    if os.path.exists('runs_list.html'):
+        with open('runs_list.html', 'r', encoding='utf-8') as file:
+            runs_list_content = file.read()
+            st.write("### Runs List")
+            st.components.v1.html(runs_list_content, height=400, scrolling=True)
 
     # Button to update the data
     if st.button('Update Data'):
