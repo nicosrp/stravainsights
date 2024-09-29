@@ -4,9 +4,18 @@ import gpxpy
 import polyline
 import pandas as pd
 
+# Paths to files and folders
+csv_file_path = 'strava_activities.csv'
+gpx_folder = 'API_GPX_FILES'
+os.makedirs(gpx_folder, exist_ok=True)  # Ensure the GPX folder exists
+
 def fetch_activities_and_gpx():
     # Use your environment or secrets for tokens
-    access_token = "YOUR_ACCESS_TOKEN"  # Replace with the access token management logic
+    access_token = os.getenv('STRAVA_ACCESS_TOKEN')  # Adjust to retrieve access token securely
+
+    if not access_token:
+        print("Access token is missing.")
+        return
 
     # Strava API base URL
     api_base_url = 'https://www.strava.com/api/v3/'
@@ -41,7 +50,12 @@ def fetch_activities_and_gpx():
         all_activities.extend(activities)
         page += 1
 
-    # Convert to DataFrame and save to CSV
+    # Check if activities were fetched
+    if not all_activities:
+        print("No activities fetched from Strava. CSV will not be updated.")
+        return
+
+    # Convert activities to DataFrame
     activities_data = []
     for activity in all_activities:
         activities_data.append({
@@ -56,13 +70,18 @@ def fetch_activities_and_gpx():
         })
 
     df = pd.DataFrame(activities_data)
-    df.to_csv('strava_activities.csv', index=False)
+    if df.empty:
+        print("Warning: DataFrame is empty. No data to write to CSV.")
+        return
 
-    # Check for existing GPX files and download missing ones
-    gpx_folder = 'API_GPX_FILES'
-    os.makedirs(gpx_folder, exist_ok=True)
+    # Save DataFrame to CSV
+    df.to_csv(csv_file_path, index=False)
+    print(f"Activities successfully saved to '{csv_file_path}'.")
+
+    # Get existing GPX files in the folder
     existing_gpx_files = {f.replace('.gpx', '') for f in os.listdir(gpx_folder)}
 
+    # Download missing GPX files
     for activity in all_activities:
         activity_id = str(activity['id'])
 

@@ -19,11 +19,17 @@ def load_data(file_path):
 # Function to update data from Strava and regenerate files
 def update_data():
     st.write("Fetching data from Strava and creating missing GPX files...")
-    fetch_activities_and_gpx()
-    st.success('Data fetched and GPX files updated. Regenerating statistics...')
-    generate_map_and_statistics()
-    generate_runs_list_html()
-    st.success('All files have been updated!')
+    fetch_activities_and_gpx()  # Fetch activities and update the GPX files
+
+    # Check if the CSV file has data
+    if os.path.exists(csv_file_path) and os.path.getsize(csv_file_path) > 0:
+        st.success('Data fetched and GPX files updated. Regenerating statistics...')
+        generate_map_and_statistics()
+        generate_runs_list_html()
+        st.success('All files have been updated!')
+    else:
+        st.error("Failed to fetch data or CSV file is empty. Please check Strava API settings.")
+
 
 # Streamlit app layout
 st.title("Strava Activity Analysis")
