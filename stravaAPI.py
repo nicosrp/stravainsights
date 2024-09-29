@@ -3,6 +3,7 @@ import os
 import gpxpy
 import polyline
 import pandas as pd
+import streamlit as st
 
 # Paths to files and folders
 csv_file_path = 'strava_activities.csv'
@@ -10,11 +11,33 @@ gpx_folder = 'API_GPX_FILES'
 os.makedirs(gpx_folder, exist_ok=True)  # Ensure the GPX folder exists
 
 def fetch_activities_and_gpx():
-    # Use your environment or secrets for tokens
-    access_token = os.getenv('STRAVA_ACCESS_TOKEN')
+    # Fetching secrets using streamlit's secrets management
+    client_id = st.secrets["STRAVA_CLIENT_ID"]
+    client_secret = st.secrets["STRAVA_CLIENT_SECRET"]
+    refresh_token = st.secrets["STRAVA_REFRESH_TOKEN"]
+
+    # Step 1: Obtain an access token using the refresh token
+    token_url = 'https://www.strava.com/oauth/token'
+    response = requests.post(
+        token_url,
+        data={
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'refresh_token': refresh_token,
+            'grant_type': 'refresh_token'
+        }
+    )
+
+    if response.status_code != 200:
+        st.error(f"Error fetching access token: {response.status_code}")
+        st.error(f"Response: {response.json()}")
+        return
+
+    # Extract access token from the response
+    access_token = response.json().get('access_token')
 
     if not access_token:
-        print("Access token is missing.")
+        st.error("Access token not found in the response.")
         return
 
     # Strava API base URL
@@ -39,8 +62,8 @@ def fetch_activities_and_gpx():
         )
 
         if response.status_code != 200:
-            print(f"Error fetching activities: {response.status_code}")
-            print(f"Response: {response.text}")
+            st.error(f"Error fetching activities: {response.status_code}")
+            st.error(f"Response: {response.text}")
             break
 
         activities = response.json()
@@ -52,7 +75,7 @@ def fetch_activities_and_gpx():
 
     # Check if activities were fetched
     if not all_activities:
-        print("No activities fetched from Strava. CSV will not be updated.")
+        st.warning("No activities fetched from Strava. CSV will not be updated.")
         return
 
     # Convert activities to DataFrame
@@ -71,12 +94,12 @@ def fetch_activities_and_gpx():
 
     df = pd.DataFrame(activities_data)
     if df.empty:
-        print("Warning: DataFrame is empty. No data to write to CSV.")
+        st.warning("Warning: DataFrame is empty. No data to write to CSV.")
         return
 
     # Save DataFrame to CSV
     df.to_csv(csv_file_path, index=False)
-    print(f"Activities successfully saved to '{csv_file_path}'.")
+    st.write(f"Activities successfully saved to '{csv_file_path}'.")
 
     # Get existing GPX files in the folder
     existing_gpx_files = {f.replace('.gpx', '') for f in os.listdir(gpx_folder)}
@@ -92,12 +115,12 @@ def fetch_activities_and_gpx():
         # Fetch GPX data using Strava's API
         response = requests.get(f"{api_base_url}activities/{activity_id}", headers=headers)
         if response.status_code != 200:
-            print(f"Failed to get activity data for {activity_id}: {response.status_code}")
+            st.error(f"Failed to get activity data for {activity_id}: {response.status_code}")
             continue
 
         activity_data = response.json()
         if 'map' not in activity_data or 'summary_polyline' not in activity_data['map']:
-            print(f"No polyline data for activity {activity_id}")
+            st.warning(f"No polyline data for activity {activity_id}")
             continue
 
         polyline_str = activity_data['map']['summary_polyline']
@@ -119,6 +142,6 @@ def fetch_activities_and_gpx():
         with open(gpx_file_path, 'w') as f:
             f.write(gpx.to_xml())
 
-        print(f'Saved GPX file: {gpx_file_path}')
+        st.write(f'Saved GPX file: {gpx_file_path}')
 
-    print("Successfully fetched the latest activities and created missing GPX files.")
+    st.success("Successfully fetched the latest activities and created missing GPX files.")
