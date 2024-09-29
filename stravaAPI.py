@@ -24,8 +24,6 @@ def fetch_activities_and_gpx():
 
         token_response.raise_for_status()
         token_data = token_response.json()
-        st.write(f"Token Scopes: {token_data.get('scope')}")
-
 
         # Extract the access token
         access_token = token_data.get('access_token')
