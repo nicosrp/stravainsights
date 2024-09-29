@@ -11,7 +11,7 @@ os.makedirs(gpx_folder, exist_ok=True)  # Ensure the GPX folder exists
 
 def fetch_activities_and_gpx():
     # Use your environment or secrets for tokens
-    access_token = os.getenv('STRAVA_ACCESS_TOKEN')  # Adjust to retrieve access token securely
+    access_token = os.getenv('STRAVA_ACCESS_TOKEN')
 
     if not access_token:
         print("Access token is missing.")
@@ -27,7 +27,7 @@ def fetch_activities_and_gpx():
 
     # Pagination parameters
     page = 1
-    per_page = 200  # Max number of activities per page
+    per_page = 200  # Fetch up to 200 activities per page
     all_activities = []
 
     # Fetch activities with pagination
@@ -45,7 +45,7 @@ def fetch_activities_and_gpx():
 
         activities = response.json()
         if not activities:
-            break  # Exit loop if no more activities
+            break  # No more activities to fetch
 
         all_activities.extend(activities)
         page += 1
