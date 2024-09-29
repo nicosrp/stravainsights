@@ -16,8 +16,8 @@ __pycache__/
 *$py.class
 
 # GPX files and other local data
-API_GPX_FILES/
-strava_activities.csv  # Ignore local CSV file
+#API_GPX_FILES/
+#strava_activities.csv  # Ignore local CSV file
 
 # Package and build files
 *.egg-info/
