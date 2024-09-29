@@ -17,7 +17,6 @@ st.title("Strava Activity Analysis Dashboard")
 
 # Sidebar for data management
 st.sidebar.header("Data Management")
-st.write(f"Token Scopes: {token_data.get('scope')}")
 fetch_data = st.sidebar.button("Fetch Latest Data and GPX Files from Strava")
 
 # Helper function to load CSV file
