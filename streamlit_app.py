@@ -8,6 +8,10 @@ from stravaDash import generate_map_and_statistics, generate_runs_list_html  # F
 gpx_folder = 'API_GPX_FILES'
 csv_file_path = 'strava_activities.csv'
 
+# Ensure the GPX folder exists
+if not os.path.exists(gpx_folder):
+    os.makedirs(gpx_folder)
+
 # Helper function to load data
 @st.cache_data
 def load_data(file_path):
@@ -19,16 +23,23 @@ def load_data(file_path):
 # Function to update data from Strava and regenerate files
 def update_data():
     st.write("Fetching data from Strava and creating missing GPX files...")
+    # Debugging: Add print statements to track function calls
+    print("Running fetch_activities_and_gpx...")
     fetch_activities_and_gpx()
+    print("Finished fetching activities and updating GPX files.")
+    
     st.success('Data fetched and GPX files updated. Regenerating statistics...')
+    
+    # Generate map and statistics
     generate_map_and_statistics()
     generate_runs_list_html()
+    
     st.success('All files have been updated!')
 
 # Automatically update data when the app starts
 if 'data_updated' not in st.session_state:
     st.write("Updating data on app startup...")
-    update_data()
+    update_data()  # Call the update_data function
     st.session_state['data_updated'] = True  # Set flag to avoid repeating updates during the same session
 
 # Streamlit app layout
