@@ -3,10 +3,13 @@ import pandas as pd
 import os
 from stravaAPI import fetch_activities_and_gpx  # Function to fetch activities and generate GPX files
 from stravaDash import generate_map_and_statistics, generate_runs_list_html  # Functions to create HTML files
+from update_strava_data import update_strava_data
 
 # Set paths for data
 gpx_folder = 'API_GPX_FILES'
 csv_file_path = 'strava_activities.csv'
+
+# update_strava_data()
 
 # Ensure the GPX folder exists
 if not os.path.exists(gpx_folder):
