@@ -4,6 +4,7 @@ import pandas as pd
 import folium
 from datetime import datetime
 from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderUnavailable
 from collections import defaultdict
 
 # Paths to files and folders
@@ -54,8 +55,13 @@ def generate_map_and_statistics():
                     point = gpx.tracks[0].segments[0].points[0]
                     latitude, longitude = point.latitude, point.longitude
 
-                    location = geolocator.reverse((latitude, longitude), exactly_one=True, timeout=10)
-                    city, country = get_city_and_country(location)
+                    # Attempt to reverse geocode
+                    try:
+                        location = geolocator.reverse((latitude, longitude), exactly_one=True, timeout=10)
+                        city, country = get_city_and_country(location)
+                    except GeocoderUnavailable:
+                        st.warning(f"Geocoding service is unavailable for activity ID {activity_id}. Skipping location processing.")
+                        city, country = None, None
 
                     total_distance_km = activity_data['distance'].values[0] / 1000
                     if city:
@@ -87,7 +93,6 @@ def generate_map_and_statistics():
     activity_map.save('activity_map.html')
 
     # Generate city and country statistics HTML
-        # Generate city and country statistics HTML
     stats_html_content = "<div class='city-stats'>\n<h2>City Statistics</h2>\n"
     for index, (city, stats) in enumerate(sorted(city_distances.items(), key=lambda x: x[1]['total_distance_km'], reverse=True)):
         stats_html_content += f"<p>{index + 1}. <strong>{city}</strong>: {stats['total_distance_km']:.3f} km ({stats['run_count']} Runs)</p>\n"
