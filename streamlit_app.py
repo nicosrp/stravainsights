@@ -29,14 +29,22 @@ def update_data():
     generate_map_and_statistics()
     generate_runs_list_html()
     st.success('All files have been updated!')
+    # Mark that the data has been updated
+    st.session_state['data_updated'] = True
 
 # Set the page configuration
 st.set_page_config(layout="wide", page_title="Strava Activity Analysis")
 
+# Initialize session state for managing update process
+if 'data_updated' not in st.session_state:
+    st.session_state['data_updated'] = False
+if 'initial_update_done' not in st.session_state:
+    st.session_state['initial_update_done'] = False
+
 # Streamlit app layout
 st.title("Strava Activity Analysis")
 
-# Automatically load existing data on page load
+# Load existing data on page load
 df = load_data(csv_file_path)
 
 # Show the most up-to-date statistics if data is present
@@ -64,11 +72,17 @@ if df is not None:
             st.write("### Runs List")
             st.components.v1.html(runs_list_content, height=800, scrolling=True)
 
+# Automatically update data if it's the first load and hasn't been updated
+if not st.session_state['initial_update_done']:
+    st.session_state['initial_update_done'] = True  # Set this to True to prevent repeated updates
+    st.write("Performing initial data update...")
+    update_data()  # Perform the initial update
+    st.experimental_rerun()  # Rerun the app to reflect updated files
+
 # Button to update the data
 if st.button('Update Data'):
     update_data()
-    # Use query params to force a rerun
-    st.experimental_set_query_params(rerun=True)
+    st.experimental_rerun()  # Reload the app to show updated files
 
 # Handle the case where there is no existing data
 if df is None:
@@ -78,5 +92,4 @@ if df is None:
 st.sidebar.header("Data Management")
 if st.sidebar.button('Force Update Data from Strava'):
     update_data()
-    # Use query params to force a rerun
-    st.experimental_set_query_params(rerun=True)
+    st.experimental_rerun()  # Reload the app to show updated files
