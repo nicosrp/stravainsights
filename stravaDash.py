@@ -6,6 +6,7 @@ from datetime import datetime
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderUnavailable
 from collections import defaultdict
+import streamlit as st
 
 # Paths to files and folders
 gpx_folder = 'API_GPX_FILES'
