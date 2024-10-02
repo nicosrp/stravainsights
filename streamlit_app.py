@@ -64,15 +64,19 @@ if df is not None:
             st.write("### Runs List")
             st.components.v1.html(runs_list_content, height=800, scrolling=True)
 
-    # Button to update the data
-    if st.button('Update Data'):
-        update_data()
-        st.experimental_set_query_params(rerun=True)  # Reload the app to show updated files
-else:
+# Button to update the data
+if st.button('Update Data'):
+    update_data()
+    # Use query params to force a rerun
+    st.experimental_set_query_params(rerun=True)
+
+# Handle the case where there is no existing data
+if df is None:
     st.write("No existing data found. Please update the data to fetch the latest activities.")
 
 # Sidebar for manual update
 st.sidebar.header("Data Management")
 if st.sidebar.button('Force Update Data from Strava'):
     update_data()
-    st.experimental_set_query_params(rerun=True)  # Reload the app to show updated files
+    # Use query params to force a rerun
+    st.experimental_set_query_params(rerun=True)
