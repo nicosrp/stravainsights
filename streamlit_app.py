@@ -44,18 +44,16 @@ if 'initial_update_done' not in st.session_state:
 # Streamlit app layout
 st.title("My Strava Activities")
 
-# Display the summary HTML at the top
-if os.path.exists('generated_summary.html'):
-    with open('generated_summary.html', 'r', encoding='utf-8') as file:
-        summary_content = file.read()
-        st.components.v1.html(summary_content, height=200, scrolling=True)  # Adjust height as needed
-
 # Load existing data on page load
 df = load_data(csv_file_path)
 
 # Show the most up-to-date statistics if data is present
 if df is not None:
-    # Display city and country statistics
+    if os.path.exists('generated_summary.html'):
+        with open('generated_summary.html', 'r', encoding='utf-8') as file:
+            summary_content = file.read()
+            st.components.v1.html(summary_content, height=200, scrolling=True)  # Adjust height as needed
+        # Display city and country statistics
     if os.path.exists('generated_city_statistics_from_csv.html'):
         with open('generated_city_statistics_from_csv.html', 'r', encoding='utf-8') as file:
             stats_content = file.read()
