@@ -9,6 +9,8 @@ from update_strava_data import update_strava_data
 gpx_folder = 'API_GPX_FILES'
 csv_file_path = 'strava_activities.csv'
 
+# update_strava_data()
+
 # Ensure the GPX folder exists
 if not os.path.exists(gpx_folder):
     os.makedirs(gpx_folder)
@@ -42,7 +44,7 @@ if 'initial_update_done' not in st.session_state:
     st.session_state['initial_update_done'] = False
 
 # Streamlit app layout
-st.title("Strava Activity Analysis")
+st.title("My Strava Activities")
 
 # Load existing data on page load
 df = load_data(csv_file_path)
@@ -55,21 +57,21 @@ if df is not None:
     if os.path.exists('generated_city_statistics_from_csv.html'):
         with open('generated_city_statistics_from_csv.html', 'r', encoding='utf-8') as file:
             stats_content = file.read()
-            st.write("### City and Country Statistics")
+            st.write("### Location Stats")
             st.components.v1.html(stats_content, height=800, scrolling=True)
 
     # Display the map
     if os.path.exists('activity_map.html'):
         with open('activity_map.html', 'r', encoding='utf-8') as file:
             map_content = file.read()
-            st.write("### Activity Map")
+            st.write("### Spatial Distribution Map")
             st.components.v1.html(map_content, height=600, scrolling=True)
 
     # Display the runs list
     if os.path.exists('runs_list.html'):
         with open('runs_list.html', 'r', encoding='utf-8') as file:
             runs_list_content = file.read()
-            st.write("### Runs List")
+            st.write("### List of All Runs")
             st.components.v1.html(runs_list_content, height=800, scrolling=True)
 
 # Automatically update data if it's the first load and hasn't been updated
