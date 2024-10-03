@@ -82,7 +82,7 @@ if not st.session_state['initial_update_done']:
 # Button to update the data
 if st.button('Update Data'):
     update_data()
-    st.experimental_rerun()  # Reload the app to show updated files
+    st.experimental_set_query_params(updated=True)  # Reload the app to show updated files
 
 # Handle the case where there is no existing data
 if df is None:
@@ -92,4 +92,4 @@ if df is None:
 st.sidebar.header("Data Management")
 if st.sidebar.button('Force Update Data from Strava'):
     update_data()
-    st.experimental_rerun()  # Reload the app to show updated files
+    st.experimental_set_query_params(updated=True) # Reload the app to show updated files
