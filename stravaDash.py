@@ -231,3 +231,50 @@ def generate_runs_list_html():
         file.write(html_content)
 
     print("Run list HTML file generated: runs_list.html")
+
+
+# In stravaDash.py
+
+def generate_summary_html():
+    # Load the CSV file for activities
+    df = pd.read_csv(csv_file_path)
+
+    # Ensure that only "Run" activities are processed
+    df_runs = df[df['type'] == 'Run']
+    
+    # Basic statistics
+    total_runs = len(df_runs)
+    total_distance_km = df_runs['distance'].sum() / 1000  # Convert meters to kilometers
+    total_time_hours = df_runs['moving_time'].sum() / 3600  # Convert seconds to hours
+    avg_pace_seconds_per_km = df_runs['moving_time'].sum() / df_runs['distance'].sum() if df_runs['distance'].sum() > 0 else 0
+    avg_pace_minutes = int(avg_pace_seconds_per_km // 60)
+    avg_pace_seconds = int(avg_pace_seconds_per_km % 60)
+    
+    # Generate the HTML content
+    summary_html_content = f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; color: #333; }}
+            .summary-section {{ margin: 20px; }}
+            h2 {{ color: #333; }}
+            p {{ margin: 5px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class='summary-section'>
+            <h2>Activity Summary</h2>
+            <p><strong>Total Runs:</strong> {total_runs}</p>
+            <p><strong>Total Distance:</strong> {total_distance_km:.2f} km</p>
+            <p><strong>Total Moving Time:</strong> {total_time_hours:.2f} hours</p>
+            <p><strong>Average Pace:</strong> {avg_pace_minutes}:{avg_pace_seconds:02d} min/km</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    # Save the generated HTML content to a file
+    with open('generated_summary.html', 'w', encoding='utf-8') as file:
+        file.write(summary_html_content)
+
+    print("Summary HTML file generated: generated_summary.html")
