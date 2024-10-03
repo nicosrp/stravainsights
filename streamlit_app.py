@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from stravaAPI import fetch_activities_and_gpx  # Function to fetch activities and generate GPX files
-from stravaDash import generate_map_and_statistics, generate_runs_list_html, generate_summary_html  # Import the new function
+from stravaDash import * # Import the new function
 from update_strava_data import update_strava_data
 
 # Set paths for data
