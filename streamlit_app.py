@@ -52,6 +52,7 @@ if df is not None:
     if os.path.exists('generated_summary.html'):
         with open('generated_summary.html', 'r', encoding='utf-8') as file:
             summary_content = file.read()
+            st.write("### General Stats")
             st.components.v1.html(summary_content, height=350, scrolling=True)  # Adjust height as needed
         # Display city and country statistics
     if os.path.exists('generated_city_statistics_from_csv.html'):
