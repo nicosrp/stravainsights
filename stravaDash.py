@@ -7,6 +7,7 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderUnavailable
 from collections import defaultdict
 import streamlit as st
+from datetime import datetime
 
 # Paths to files and folders
 gpx_folder = 'API_GPX_FILES'
@@ -245,11 +246,21 @@ def generate_summary_html():
     # Basic statistics
     total_runs = len(df_runs)
     total_distance_km = df_runs['distance'].sum() / 1000  # Convert meters to kilometers
-    total_time_hours = df_runs['moving_time'].sum() / 3600  # Convert seconds to hours
-    avg_pace_seconds_per_km = df_runs['moving_time'].sum() / df_runs['distance'].sum() if df_runs['distance'].sum() > 0 else 0
-    avg_pace_minutes = int(avg_pace_seconds_per_km // 60)
-    avg_pace_seconds = int(avg_pace_seconds_per_km % 60)
-    
+    avg_distance_per_run_km = total_distance_km / total_runs if total_runs > 0 else 0
+
+    # Filter data for the current year
+    current_year = datetime.now().year
+    df_runs_current_year = df_runs[pd.to_datetime(df_runs['start_date_local']).dt.year == current_year]
+    total_runs_current_year = len(df_runs_current_year)
+    total_distance_current_year_km = df_runs_current_year['distance'].sum() / 1000  # Convert meters to kilometers
+    avg_distance_per_run_current_year_km = total_distance_current_year_km / total_runs_current_year if total_runs_current_year > 0 else 0
+
+    # Get the date of the last run
+    if not df_runs.empty:
+        last_run_date = pd.to_datetime(df_runs['start_date_local']).max().strftime('%d.%m.%Y')
+    else:
+        last_run_date = 'N/A'
+
     # Generate the HTML content
     summary_html_content = f"""
     <html>
@@ -257,17 +268,20 @@ def generate_summary_html():
         <style>
             body {{ font-family: Arial, sans-serif; color: #333; }}
             .summary-section {{ margin: 20px; }}
-            h2 {{ color: #333; }}
             p {{ margin: 5px 0; }}
         </style>
     </head>
     <body>
         <div class='summary-section'>
-            <h2>Activity Summary</h2>
             <p><strong>Total Runs:</strong> {total_runs}</p>
-            <p><strong>Total Distance:</strong> {total_distance_km:.2f} km</p>
-            <p><strong>Total Moving Time:</strong> {total_time_hours:.2f} hours</p>
-            <p><strong>Average Pace:</strong> {avg_pace_minutes}:{avg_pace_seconds:02d} min/km</p>
+            <p><strong>Total Distance (km):</strong> {total_distance_km:.3f}</p>
+            <p><strong>Average Distance per Run (km):</strong> {avg_distance_per_run_km:.3f}</p>
+            <br>
+            <p><strong>Total Runs, This Year:</strong> {total_runs_current_year}</p>
+            <p><strong>Total Distance, This Year (km):</strong> {total_distance_current_year_km:.3f}</p>
+            <p><strong>Average Distance per Run, This Year (km):</strong> {avg_distance_per_run_current_year_km:.3f}</p>
+            <br>
+            <p><strong>Date of Last Run:</strong> {last_run_date}</p>
         </div>
     </body>
     </html>
