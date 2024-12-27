@@ -22,25 +22,38 @@ def get_city_and_country(location):
         country = address.get('country', 'Unknown')
     return city, country
 
-# Generate map and city/country statistics
-def generate_map_and_statistics():
+def generate_map_and_statistics(incremental=True):
     # Load the CSV file for activities
     df = pd.read_csv(csv_file_path)
     
     # Ensure that only "Run" activities are processed
     df_runs = df[df['type'] == 'Run']
+    
+    # Check if existing map file is present
+    map_file_path = 'activity_map.html'
+    if incremental and os.path.exists(map_file_path):
+        processed_activities = set()  # Set of already processed activity IDs
+        with open(map_file_path, 'r', encoding='utf-8') as map_file:
+            content = map_file.read()
+            for activity_id in df_runs['id']:
+                if f"Run Number: {activity_id}" in content:  # Simple heuristic to check if activity exists
+                    processed_activities.add(activity_id)
+    else:
+        processed_activities = set()
+    
+    # Initialize folium map or load the existing one
+    if incremental and os.path.exists(map_file_path):
+        activity_map = folium.Map(location=[55.6761, 12.5683], zoom_start=11, tiles='cartodb positron')
+    else:
+        activity_map = folium.Map(location=[55.6761, 12.5683], zoom_start=11, tiles='cartodb positron')
 
-    # Initialize geolocator
-    geolocator = Nominatim(user_agent="city_locator")
-    city_distances = defaultdict(lambda: {'total_distance_km': 0, 'run_count': 0})
-    country_distances = defaultdict(lambda: {'total_distance_km': 0, 'run_count': 0})
-    activity_map = folium.Map(location=[55.6761, 12.5683], zoom_start=11, tiles='cartodb positron')
-    tracks_data = []
-
-    # Process each GPX file
+    # Process new GPX files
     for file_name in os.listdir(gpx_folder):
         if file_name.endswith('.gpx'):
             activity_id = file_name.replace('.gpx', '')
+            if activity_id in processed_activities:  # Skip already processed activities
+                continue
+
             activity_data = df[df['id'] == int(activity_id)]
             if activity_data.empty:
                 continue
@@ -52,60 +65,27 @@ def generate_map_and_statistics():
                 gpx = gpxpy.parse(gpx_file)
                 if gpx.tracks and gpx.tracks[0].segments and gpx.tracks[0].segments[0].points:
                     track_points = [(point.latitude, point.longitude) for point in gpx.tracks[0].segments[0].points]
-                    tracks_data.append((track_points, activity_id, start_time))
 
-                    point = gpx.tracks[0].segments[0].points[0]
-                    latitude, longitude = point.latitude, point.longitude
-
-                    # Attempt to reverse geocode
-                    try:
-                        location = geolocator.reverse((latitude, longitude), exactly_one=True, timeout=10)
-                        city, country = get_city_and_country(location)
-                    except GeocoderUnavailable:
-                        st.warning(f"Geocoding service is unavailable for activity ID {activity_id}. Skipping location processing.")
-                        city, country = None, None
-
+                    # Generate popup and polyline
                     total_distance_km = activity_data['distance'].values[0] / 1000
-                    if city:
-                        city_distances[city]['total_distance_km'] += total_distance_km
-                        city_distances[city]['run_count'] += 1
-                    if country:
-                        country_distances[country]['total_distance_km'] += total_distance_km
-                        country_distances[country]['run_count'] += 1
+                    total_time_seconds = activity_data['moving_time'].values[0]
+                    avg_pace_seconds_per_km = total_time_seconds / total_distance_km if total_distance_km > 0 else 0
+                    avg_pace_minutes = int(avg_pace_seconds_per_km // 60)
+                    avg_pace_seconds = int(avg_pace_seconds_per_km % 60)
+                    run_date = start_time.to_pydatetime().strftime("%Y-%m-%d")
 
-    # Sort tracks and create map
-    tracks_data.sort(key=lambda x: x[2])
-    for idx, (track_points, activity_id, start_time) in enumerate(tracks_data):
-        activity_data = df[df['id'] == int(activity_id)]
-        total_distance_km = activity_data['distance'].values[0] / 1000
-        total_time_seconds = activity_data['moving_time'].values[0]
-        avg_pace_seconds_per_km = total_time_seconds / total_distance_km if total_distance_km > 0 else 0
-        avg_pace_minutes = int(avg_pace_seconds_per_km // 60)
-        avg_pace_seconds = int(avg_pace_seconds_per_km % 60)
-        run_date = start_time.to_pydatetime().strftime("%Y-%m-%d")
-        run_number = idx + 1
+                    popup_text = (f"Run Number: {activity_id}<br>"
+                                  f"Date: {run_date}<br>"
+                                  f"Total Distance: {total_distance_km:.3f} km<br>"
+                                  f"Pace: {avg_pace_minutes}:{avg_pace_seconds:02d} min/km")
+                    points = [(point[0], point[1]) for point in track_points]
+                    folium.PolyLine(points, color='red', weight=2.5, opacity=1, tooltip=popup_text).add_to(activity_map)
 
-        popup_text = (f"Run Number: {run_number}<br>"
-                      f"Date: {run_date}<br>"
-                      f"Total Distance: {total_distance_km:.3f} km<br>"
-                      f"Pace: {avg_pace_minutes}:{avg_pace_seconds:02d} min/km")
-        points = [(point[0], point[1]) for point in track_points]
-        folium.PolyLine(points, color='red', weight=2.5, opacity=1, tooltip=popup_text).add_to(activity_map)
+    # Save the updated map
+    activity_map.save(map_file_path)
 
-    activity_map.save('activity_map.html')
+    st.write(f"Map updated with {len(processed_activities)} processed activities.")
 
-    # Generate city and country statistics HTML
-    stats_html_content = "<div class='city-stats'>\n<h2>City Statistics</h2>\n"
-    for index, (city, stats) in enumerate(sorted(city_distances.items(), key=lambda x: x[1]['total_distance_km'], reverse=True)):
-        stats_html_content += f"<p>{index + 1}. <strong>{city}</strong>: {stats['total_distance_km']:.3f} km ({stats['run_count']} Runs)</p>\n"
-
-    stats_html_content += "<br><br><h2>Country Statistics</h2>\n"
-    for index, (country, stats) in enumerate(sorted(country_distances.items(), key=lambda x: x[1]['total_distance_km'], reverse=True)):
-        stats_html_content += f"<p>{index + 1}. <strong>{country}</strong>: {stats['total_distance_km']:.3f} km ({stats['run_count']} Runs)</p>\n"
-    stats_html_content += "</div>"
-
-    with open('generated_city_statistics_from_csv.html', 'w', encoding='utf-8') as file:
-        file.write(stats_html_content)
 
 # Generate the run list in a sortable HTML table
 def generate_runs_list_html():

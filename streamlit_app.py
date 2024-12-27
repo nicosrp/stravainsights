@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from stravaAPI import fetch_activities_and_gpx  # Function to fetch activities and generate GPX files
 from stravaDash import * # Import the new function
-from update_strava_data import update_strava_data
+#from update_strava_data import update_strava_data
 
 # Set paths for data
 gpx_folder = 'API_GPX_FILES'
@@ -22,13 +22,13 @@ def load_data(file_path):
         return None
 
 # Function to update data from Strava and regenerate files
-def update_data():
+def update_data(incremental=True):
     st.write("Fetching data from Strava and creating missing GPX files...")
     fetch_activities_and_gpx()
     st.success('Data fetched and GPX files updated. Regenerating statistics...')
-    generate_map_and_statistics()
-    generate_runs_list_html()
-    generate_summary_html()  # Generate the summary HTML
+    generate_map_and_statistics(incremental=incremental)  # Pass the incremental flag
+    generate_runs_list_html()  # This function can be optimized similarly
+    generate_summary_html()
     st.success('All files have been updated!')
     st.session_state['data_updated'] = True
 
