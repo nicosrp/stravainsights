@@ -101,3 +101,8 @@ st.sidebar.header("Data Management")
 if st.sidebar.button('Force Update Data from Strava'):
     update_data()
     st.experimental_set_query_params(updated=True)  # Reload the app to show updated files
+    # Sidebar for manual update
+    st.sidebar.header("Data Management")
+    if st.sidebar.button('Force Update Data from Strava'):
+        update_data()
+        st.experimental_set_query_params(updated=True)  # Reload the app to show updated files
