@@ -2,7 +2,10 @@ import streamlit as st
 import pandas as pd
 import os
 import time
-from stravaAPI import fetch_activities_and_gpx, RateLimitExceededError  # Function to fetch activities and generate GPX files
+try:
+    from stravaAPI import fetch_activities_and_gpx, RateLimitExceededError  # Function to fetch activities and generate GPX files
+except ImportError as e:
+    st.error(f"ImportError: {e}. Please ensure that 'stravaAPI' module and the required functions are available.")
 from stravaDash import * # Import the new function
 #from update_strava_data import update_strava_data
 
