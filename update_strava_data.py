@@ -148,3 +148,4 @@ def update_strava_data():
 
 if __name__ == "__main__":
     update_strava_data()
+

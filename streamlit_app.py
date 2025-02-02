@@ -85,9 +85,7 @@ if df is not None:
 # Automatically update data if it's the first load and hasn't been updated
 if not st.session_state['initial_update_done']:
     st.session_state['initial_update_done'] = True  # Set this to True to prevent repeated updates
-    st.write("Performing initial data update...")
-    update_data()  # Perform the initial update
-    st.experimental_rerun()  # Rerun the app to reflect updated files
+    st.write("Please update the data to fetch the latest activities.")
 
 # Button to update the data
 if st.button('Update Data'):
@@ -103,5 +101,3 @@ st.sidebar.header("Data Management")
 if st.sidebar.button('Force Update Data from Strava'):
     update_data()
     st.experimental_set_query_params(updated=True)  # Reload the app to show updated files
-
-
