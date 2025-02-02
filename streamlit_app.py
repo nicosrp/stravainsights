@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 import time
-from stravaAPI import fetch_activities_and_gpx, RateLimitExceededError  # Function to fetch activities and generate GPX files and handle rate limit errors
+from stravaAPI import fetch_activities_and_gpx, RateLimitExceededError  # Function to fetch activities and generate GPX files
 from stravaDash import * # Import the new function
 #from update_strava_data import update_strava_data
 
@@ -27,9 +27,9 @@ def update_data(incremental=True):
     try:
         fetch_activities_and_gpx()
     except RateLimitExceededError as e:
-        st.error(f"Rate limit exceeded: {e}. Please try again later.")
-    except Exception as e:
-        st.error(f"Error fetching activities: {e}. Please try again later.")
+        st.error(f"Error fetching activities: {e}. Retrying in 15 minutes...")
+        time.sleep(900)  # Sleep for 15 minutes before retrying
+        fetch_activities_and_gpx()
     fetch_activities_and_gpx()
     st.success('Data fetched and GPX files updated. Regenerating statistics...')
     generate_map_and_statistics(incremental=incremental)  # Pass the incremental flag
@@ -85,7 +85,9 @@ if df is not None:
 # Automatically update data if it's the first load and hasn't been updated
 if not st.session_state['initial_update_done']:
     st.session_state['initial_update_done'] = True  # Set this to True to prevent repeated updates
-    st.write("Please update the data to fetch the latest activities.")
+    st.write("Performing initial data update...")
+    update_data()  # Perform the initial update
+    st.experimental_rerun()  # Rerun the app to reflect updated files
 
 # Button to update the data
 if st.button('Update Data'):
@@ -101,8 +103,3 @@ st.sidebar.header("Data Management")
 if st.sidebar.button('Force Update Data from Strava'):
     update_data()
     st.experimental_set_query_params(updated=True)  # Reload the app to show updated files
-    # Sidebar for manual update
-    st.sidebar.header("Data Management")
-    if st.sidebar.button('Force Update Data from Strava'):
-        update_data()
-        st.experimental_set_query_params(updated=True)  # Reload the app to show updated files
