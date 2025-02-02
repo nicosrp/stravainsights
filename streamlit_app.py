@@ -2,10 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 import time
-try:
-    from stravaAPI import fetch_activities_and_gpx, RateLimitExceededError  # Function to fetch activities and generate GPX files
-except ImportError as e:
-    st.error(f"ImportError: {e}. Please ensure that 'stravaAPI' module and the required functions are available.")
+from stravaAPI import fetch_activities_and_gpx, RateLimitExceededError  # Function to fetch activities and generate GPX files and handle rate limit errors
 from stravaDash import * # Import the new function
 #from update_strava_data import update_strava_data
 
@@ -30,9 +27,9 @@ def update_data(incremental=True):
     try:
         fetch_activities_and_gpx()
     except RateLimitExceededError as e:
-        st.error(f"Error fetching activities: {e}. Retrying in 15 minutes...")
-        time.sleep(900)  # Sleep for 15 minutes before retrying
-        fetch_activities_and_gpx()
+        st.error(f"Rate limit exceeded: {e}. Please try again later.")
+    except Exception as e:
+        st.error(f"Error fetching activities: {e}. Please try again later.")
     fetch_activities_and_gpx()
     st.success('Data fetched and GPX files updated. Regenerating statistics...')
     generate_map_and_statistics(incremental=incremental)  # Pass the incremental flag
