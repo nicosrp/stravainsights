@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from stravaAPI import fetch_activities_and_gpx  # Function to fetch activities and generate GPX files
-from stravaDash import * # Import the new function
-#from update_strava_data import update_strava_data
+from stravaDash import *  # Import the new function
 
 # Set paths for data
 gpx_folder = 'API_GPX_FILES'
@@ -38,8 +37,6 @@ st.set_page_config(layout="wide", page_title="Strava Activity Analysis")
 # Initialize session state for managing update process
 if 'data_updated' not in st.session_state:
     st.session_state['data_updated'] = False
-if 'initial_update_done' not in st.session_state:
-    st.session_state['initial_update_done'] = False
 
 # Streamlit app layout
 st.title("My Strava Activities")
@@ -75,13 +72,6 @@ if df is not None:
             runs_list_content = file.read()
             st.write("### List of All Runs")
             st.components.v1.html(runs_list_content, height=800, scrolling=True)
-
-# Automatically update data if it's the first load and hasn't been updated
-if not st.session_state['initial_update_done']:
-    st.session_state['initial_update_done'] = True  # Set this to True to prevent repeated updates
-    st.write("Performing initial data update...")
-    update_data()  # Perform the initial update
-    st.experimental_rerun()  # Rerun the app to reflect updated files
 
 # Button to update the data
 if st.button('Update Data'):
