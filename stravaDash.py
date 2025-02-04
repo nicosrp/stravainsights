@@ -72,9 +72,10 @@ def generate_map_and_statistics(incremental=True):
                     avg_pace_seconds_per_km = total_time_seconds / total_distance_km if total_distance_km > 0 else 0
                     avg_pace_minutes = int(avg_pace_seconds_per_km // 60)
                     avg_pace_seconds = int(avg_pace_seconds_per_km % 60)
-                    run_date = start_time.to_pydatetime().strftime("%Y-%m-%d")
+                    run_date = start_time.to_pydatetime().strftime("%d.%m.%Y")
+                    run_number = activity_data['run_number'].values[0]
 
-                    popup_text = (f"Run Number: {activity_id}<br>"
+                    popup_text = (f"Run Number: {run_number}<br>"
                                   f"Date: {run_date}<br>"
                                   f"Total Distance: {total_distance_km:.3f} km<br>"
                                   f"Pace: {avg_pace_minutes}:{avg_pace_seconds:02d} min/km")
@@ -106,6 +107,7 @@ def generate_runs_list_html():
             start_time = pd.to_datetime(activity_data['start_date_local'].values[0])
             total_distance_km = activity_data['distance'].values[0] / 1000
             total_time_seconds = activity_data['moving_time'].values[0]
+            run_number = activity_data['run_number'].values[0]
 
             # Calculate average pace
             avg_pace_seconds_per_km = total_time_seconds / total_distance_km if total_distance_km > 0 else 0
@@ -113,19 +115,12 @@ def generate_runs_list_html():
             avg_pace_seconds = int(avg_pace_seconds_per_km % 60)
 
             # Generate time strings for the HTML table
-            run_date = start_time.strftime("%Y-%m-%d")
+            run_date = start_time.strftime("%d.%m.%Y")
             end_time = start_time + pd.to_timedelta(total_time_seconds, unit='s')
             time_str = f"{start_time.strftime('%H:%M:%S')} - {end_time.strftime('%H:%M:%S')} (Time: {pd.to_datetime(total_time_seconds, unit='s').strftime('%H:%M:%S')})"
 
             # Append to the runs_data list
-            runs_data.append((activity_id, run_date, time_str, total_distance_km, f"{avg_pace_minutes}:{avg_pace_seconds:02d} min/km", start_time))
-
-    # Sort runs by date in ascending order to assign correct run numbers
-    runs_data.sort(key=lambda x: x[5])  # Sort by start_time
-
-    # Assign run numbers
-    for idx, run in enumerate(runs_data):
-        runs_data[idx] = (idx + 1,) + run[1:]  # Insert the run number at the beginning
+            runs_data.append((run_number, run_date, time_str, total_distance_km, f"{avg_pace_minutes}:{avg_pace_seconds:02d} min/km", start_time))
 
     # Sort runs by date in descending order for the HTML table
     runs_data.sort(key=lambda x: x[5], reverse=True)  # Sort by start_time in descending order

@@ -5,6 +5,8 @@ import polyline
 import pandas as pd
 import streamlit as st
 
+from stravaDash import generate_map_and_statistics, generate_runs_list_html, generate_summary_html
+
 # Paths to files and folders
 csv_file_path = 'strava_activities.csv'
 gpx_folder = 'API_GPX_FILES'
@@ -36,7 +38,7 @@ def update_strava_data():
 
     # Extract access token from the response
     access_token = response.json().get('access_token')
-    
+
     if not access_token:
         print("Access token not found in the response.")
         return
@@ -97,6 +99,15 @@ def update_strava_data():
     if df.empty:
         print("Warning: DataFrame is empty. No data to write to CSV.")
         return
+    
+    # Convert 'start_date_local' to datetime
+    df['start_date_local'] = pd.to_datetime(df['start_date_local'])
+
+    # Sort by 'start_date_local'
+    df = df.sort_values(by='start_date_local')
+
+    # Add 'run_number' column
+    df['run_number'] = range(1, len(df) + 1)
 
     # Save DataFrame to CSV
     df.to_csv(csv_file_path, index=False)
@@ -149,3 +160,6 @@ def update_strava_data():
 
 if __name__ == "__main__":
     update_strava_data()
+    generate_map_and_statistics()
+    generate_runs_list_html()
+    generate_summary_html()

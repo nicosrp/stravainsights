@@ -24,7 +24,8 @@ def fetch_activities_and_gpx():
             'client_id': client_id,
             'client_secret': client_secret,
             'refresh_token': refresh_token,
-            'grant_type': 'refresh_token'
+            'grant_type': 'refresh_token',
+            'scope': 'activity:read_all'
         }
     )
 
@@ -96,6 +97,15 @@ def fetch_activities_and_gpx():
     if df.empty:
         st.warning("Warning: DataFrame is empty. No data to write to CSV.")
         return
+    
+    # Convert 'start_date_local' to datetime
+    df['start_date_local'] = pd.to_datetime(df['start_date_local'])
+
+    # Sort by 'start_date_local'
+    df = df.sort_values(by='start_date_local')
+
+    # Add 'run_number' column
+    df['run_number'] = range(1, len(df) + 1)
 
     # Save DataFrame to CSV
     df.to_csv(csv_file_path, index=False)
