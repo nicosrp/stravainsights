@@ -24,7 +24,8 @@ def update_strava_data():
             'client_id': client_id,
             'client_secret': client_secret,
             'refresh_token': refresh_token,
-            'grant_type': 'refresh_token'
+            'grant_type': 'refresh_token',
+            'scope': 'activity:read_all'
         }
     )
 
@@ -35,7 +36,7 @@ def update_strava_data():
 
     # Extract access token from the response
     access_token = response.json().get('access_token')
-
+    
     if not access_token:
         print("Access token not found in the response.")
         return
