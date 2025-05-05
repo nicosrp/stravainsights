@@ -28,6 +28,7 @@ def update_data(incremental=True):
     generate_map_and_statistics(incremental=incremental)  # Pass the incremental flag
     generate_runs_list_html()  # This function can be optimized similarly
     generate_summary_html()
+    generate_city_statistics_html(incremental=incremental)  # Added the new function
     st.success('All files have been updated!')
     st.session_state['data_updated'] = True
 

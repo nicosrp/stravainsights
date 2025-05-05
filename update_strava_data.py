@@ -5,7 +5,7 @@ import polyline
 import pandas as pd
 import streamlit as st
 
-from stravaDash import generate_map_and_statistics, generate_runs_list_html, generate_summary_html
+from stravaDash import generate_map_and_statistics, generate_runs_list_html, generate_summary_html, generate_city_statistics_html
 
 # Paths to files and folders
 csv_file_path = 'strava_activities.csv'
@@ -160,6 +160,7 @@ def update_strava_data():
 
 if __name__ == "__main__":
     update_strava_data()
-    generate_map_and_statistics()
+    generate_map_and_statistics(incremental=True)
     generate_runs_list_html()
     generate_summary_html()
+    generate_city_statistics_html(incremental=True)

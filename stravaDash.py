@@ -8,6 +8,8 @@ from geopy.exc import GeocoderUnavailable
 from collections import defaultdict
 import streamlit as st
 from datetime import datetime
+import time
+import json
 
 # Paths to files and folders
 gpx_folder = 'API_GPX_FILES'
@@ -208,8 +210,192 @@ def generate_runs_list_html():
 
     print("Run list HTML file generated: runs_list.html")
 
-
-# In stravaDash.py
+def generate_city_statistics_html(incremental=True):
+    """
+    Generate HTML file with statistics about running activities grouped by city and country.
+    
+    Parameters:
+    incremental (bool): If True, will only process new GPX files that haven't been processed before
+    """
+    print("Starting to generate city statistics...")
+    
+    # Load the CSV file for activities
+    df = pd.read_csv(csv_file_path)
+    
+    # Ensure that only "Run" activities are processed
+    df_runs = df[df['type'] == 'Run']
+    
+    # Initialize geocoder for reverse geocoding
+    geolocator = Nominatim(user_agent="strava_city_stats")
+    
+    # Path to cache file for statistics
+    stats_cache_file = 'city_stats_cache.json'
+    
+    # Load existing statistics if incremental and file exists
+    if incremental and os.path.exists(stats_cache_file):
+        try:
+            with open(stats_cache_file, 'r') as f:
+                cache_data = json.load(f)
+                city_stats = defaultdict(lambda: {'distance': 0, 'count': 0})
+                country_stats = defaultdict(lambda: {'distance': 0, 'count': 0})
+                
+                # Restore city stats from cache
+                for city, stats in cache_data.get('cities', {}).items():
+                    city_stats[city]['distance'] = stats['distance']
+                    city_stats[city]['count'] = stats['count']
+                
+                # Restore country stats from cache
+                for country, stats in cache_data.get('countries', {}).items():
+                    country_stats[country]['distance'] = stats['distance']
+                    country_stats[country]['count'] = stats['count']
+                
+                # Get the list of already processed activities
+                processed_activities = set(cache_data.get('processed_activities', []))
+                print(f"Loaded cache with {len(processed_activities)} previously processed activities")
+        except Exception as e:
+            print(f"Error loading cache: {e}")
+            # If there's an error loading the cache, start fresh
+            city_stats = defaultdict(lambda: {'distance': 0, 'count': 0})
+            country_stats = defaultdict(lambda: {'distance': 0, 'count': 0})
+            processed_activities = set()
+    else:
+        # Start with empty stats
+        city_stats = defaultdict(lambda: {'distance': 0, 'count': 0})
+        country_stats = defaultdict(lambda: {'distance': 0, 'count': 0})
+        processed_activities = set()
+    
+    # Cache for geocoding results to avoid redundant API calls
+    geocoding_cache = {}
+    
+    # List to track newly processed activities
+    newly_processed = []
+    
+    # Count for tracking progress
+    gpx_files = [f for f in os.listdir(gpx_folder) if f.endswith('.gpx')]
+    total_files = len(gpx_files)
+    processed_files = 0
+    skipped_files = 0
+    
+    # Process GPX files to extract location data
+    for file_name in gpx_files:
+        activity_id = file_name.replace('.gpx', '')
+        
+        # Skip if already processed and we're doing incremental update
+        if incremental and activity_id in processed_activities:
+            skipped_files += 1
+            continue
+            
+        processed_files += 1
+        if processed_files % 10 == 0:
+            print(f"Processed {processed_files} new GPX files, skipped {skipped_files}...")
+            
+        try:
+            activity_id_int = int(activity_id)
+            activity_data = df_runs[df_runs['id'] == activity_id_int]
+            
+            if activity_data.empty:
+                continue
+                
+            file_path = os.path.join(gpx_folder, file_name)
+            
+            try:
+                with open(file_path, 'r') as gpx_file:
+                    gpx = gpxpy.parse(gpx_file)
+                    if gpx.tracks and gpx.tracks[0].segments and gpx.tracks[0].segments[0].points:
+                        # Get middle point of the track for location lookup
+                        points = gpx.tracks[0].segments[0].points
+                        mid_point = points[len(points) // 2]
+                        
+                        # Create a coordinate string for geocoding and caching
+                        coord_str = f"{mid_point.latitude:.5f},{mid_point.longitude:.5f}"
+                        
+                        # Check if we already have this location in our cache
+                        if coord_str in geocoding_cache:
+                            city, country = geocoding_cache[coord_str]
+                        else:
+                            try:
+                                # Add a delay to respect Nominatim's usage policy
+                                time.sleep(1)
+                                
+                                # Reverse geocode to get city and country
+                                location = geolocator.reverse(coord_str, exactly_one=True)
+                                city, country = get_city_and_country(location)
+                                
+                                # Cache the result
+                                geocoding_cache[coord_str] = (city, country)
+                                
+                            except Exception as e:
+                                print(f"Geocoding error for activity {activity_id}: {e}")
+                                continue
+                        
+                        # Get activity distance in km
+                        distance_km = activity_data['distance'].values[0] / 1000
+                        
+                        # Update city statistics if city is available
+                        if city:
+                            city_stats[city]['distance'] += distance_km
+                            city_stats[city]['count'] += 1
+                        
+                        # Update country statistics if country is available
+                        if country:
+                            country_stats[country]['distance'] += distance_km
+                            country_stats[country]['count'] += 1
+                        
+                        # Mark as processed
+                        newly_processed.append(activity_id)
+            except Exception as e:
+                print(f"Error parsing GPX file {file_name}: {e}")
+                continue
+        except Exception as e:
+            print(f"Error processing file {file_name}: {e}")
+            continue
+    
+    # Update processed activities list
+    processed_activities.update(newly_processed)
+    
+    print(f"Completed processing {processed_files} new GPX files, skipped {skipped_files} already processed files.")
+    
+    # Save the updated cache
+    try:
+        cache_data = {
+            'cities': {city: stats for city, stats in city_stats.items()},
+            'countries': {country: stats for country, stats in country_stats.items()},
+            'processed_activities': list(processed_activities)
+        }
+        
+        with open(stats_cache_file, 'w') as f:
+            json.dump(cache_data, f)
+        print(f"Cache updated with {len(processed_activities)} total processed activities")
+    except Exception as e:
+        print(f"Error saving cache: {e}")
+    
+    # Sort cities and countries by total distance (descending)
+    sorted_cities = sorted(city_stats.items(), key=lambda x: x[1]['distance'], reverse=True)
+    sorted_countries = sorted(country_stats.items(), key=lambda x: x[1]['distance'], reverse=True)
+    
+    # Generate HTML content
+    html_content = """<div class='city-stats'>
+<h2>City Statistics</h2>
+"""
+    
+    # Add city statistics
+    for i, (city, stats) in enumerate(sorted_cities, 1):
+        html_content += f"<p>{i}. <strong>{city}</strong>: {stats['distance']:.3f} km ({stats['count']} Runs)</p>\n"
+    
+    # Add country statistics
+    html_content += "<br><br><h2>Country Statistics</h2>\n"
+    for i, (country, stats) in enumerate(sorted_countries, 1):
+        html_content += f"<p>{i}. <strong>{country}</strong>: {stats['distance']:.3f} km ({stats['count']} Runs)</p>\n"
+    
+    html_content += "</div>"
+    
+    print("Generating HTML file...")
+    
+    # Save the generated HTML content to a file
+    with open('generated_city_statistics_from_csv.html', 'w', encoding='utf-8') as file:
+        file.write(html_content)
+    
+    print("City statistics HTML file generated: generated_city_statistics_from_csv.html")
 
 def generate_summary_html():
     # Load the CSV file for activities
