@@ -94,11 +94,10 @@ def generate_map_and_statistics(incremental=True):
 def generate_runs_list_html():
     # Load the CSV file for activities
     df = pd.read_csv(csv_file_path)
-
+    
     # Ensure only run activities are processed
     df_runs = df[df['type'] == 'Run']
-    geolocator = Nominatim(user_agent="strava_runs_list")
-
+    
     runs_data = []
     for file_name in os.listdir(gpx_folder):
         if file_name.endswith('.gpx'):
@@ -122,28 +121,11 @@ def generate_runs_list_html():
             end_time = start_time + pd.to_timedelta(total_time_seconds, unit='s')
             time_str = f"{start_time.strftime('%H:%M:%S')} - {end_time.strftime('%H:%M:%S')} (Time: {pd.to_datetime(total_time_seconds, unit='s').strftime('%H:%M:%S')})"
 
-            # Determine city based on start location
-            city_name = "Unknown"
-            file_path = os.path.join(gpx_folder, file_name)
-            try:
-                with open(file_path, 'r') as gpx_file:
-                    gpx = gpxpy.parse(gpx_file)
-                    if gpx.tracks and gpx.tracks[0].segments and gpx.tracks[0].segments[0].points:
-                        start_point = gpx.tracks[0].segments[0].points[0]
-                        coord_str = f"{start_point.latitude:.5f},{start_point.longitude:.5f}"
-                        time.sleep(1)
-                        location = geolocator.reverse(coord_str, exactly_one=True)
-                        city, _ = get_city_and_country(location)
-                        if city:
-                            city_name = city
-            except Exception:
-                pass
-
             # Append to the runs_data list
-            runs_data.append((run_number, run_date, city_name, time_str, total_distance_km, f"{avg_pace_minutes}:{avg_pace_seconds:02d} min/km", start_time))
+            runs_data.append((run_number, run_date, time_str, total_distance_km, f"{avg_pace_minutes}:{avg_pace_seconds:02d} min/km", start_time))
 
     # Sort runs by date in descending order for the HTML table
-    runs_data.sort(key=lambda x: x[6], reverse=True)  # Sort by start_time in descending order
+    runs_data.sort(key=lambda x: x[5], reverse=True)  # Sort by start_time in descending order
 
     # Generate the HTML content
     html_content = """
@@ -196,7 +178,6 @@ def generate_runs_list_html():
             <tr>
                 <th data-type="number">Run Number</th>
                 <th data-type="date">Date</th>
-                <th data-type="text">City</th>
                 <th data-type="text">Time</th>
                 <th data-type="number">Distance (km)</th>
                 <th data-type="pace">Average Pace (min/km)</th>
@@ -205,12 +186,11 @@ def generate_runs_list_html():
 
     # Add rows to the table
     for run in runs_data:
-        run_number, run_date, city_name, time_str, distance_km, pace, _ = run
+        run_number, run_date, time_str, distance_km, pace, _ = run
         html_content += f"""
             <tr>
                 <td>{run_number}</td>
                 <td>{run_date}</td>
-                <td>{city_name}</td>
                 <td>{time_str}</td>
                 <td>{distance_km:.3f}</td>
                 <td>{pace}</td>
